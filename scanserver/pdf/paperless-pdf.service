@@ -1,0 +1,14 @@
+[Unit]
+Description=Paperless ocr+pdf service
+
+[Service]
+User=root
+Group=root
+Nice=0
+ExecStart=/usr/local/bin/pdf-listener.sh
+Restart=always
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

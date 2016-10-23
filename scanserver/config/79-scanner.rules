@@ -1,0 +1,2 @@
+# Fujitsu ScanSnap S1300i
+SUBSYSTEM=="usb", SYMLINK="scansnap", ATTRS{idVendor}=="04c5", ATTRS{idProduct}=="128d", MODE="0664", GROUP="scanner", ENV{libsane_matched}="yes", TAG+="systemd", ENV{SYSTEMD_WANTS}="insaned.service"

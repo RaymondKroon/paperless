@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+
+exec 2> >(logger -s -t scan)
+set -e
+
+log() {
+  echo "$@"
+  logger -p user.notice -t scan "$@"
+}
+
+err() {
+  echo "$@" >&2
+  logger -p user.error -t scan "$@"
+}
+
+SCANS_DIR=${SCANS_DIR:-/scans/raw}
+
+TMP_DIR=`mktemp -d`
+FILE_NAME=scan_`date +%Y%m%d-%H%M%S`
+LOCKFILE="/tmp/copy.lock"
+INSANED_LOGFILE="/tmp/insaned.log"
+
+log "Scanning on: $1"
+
+if [ -f $LOCKFILE ]; then
+    err "Error: Another scanning operation is currently in progress"
+    exit 0
+fi
+touch $LOCKFILE
+
+scanimage --device $1 \
+--resolution 300 \
+--format=pnm \
+--batch="$TMP_DIR/scan_%03d.pnm" \
+--mode Gray \
+--source 'ADF Duplex'
+
+rm -f $LOCKFILE
+
+cd $TMP_DIR && tar cf $TMP_DIR/$FILE_NAME.tar $(ls *.pnm)
+mv $TMP_DIR/$FILE_NAME.tar $SCANS_DIR/
+
+log "Output saved in $SCANS_DIR/$FILE_NAME.tar"
+
+rm -rf $TMP_DIR
+
+log "Done"
+
+#log "Cutting borders..."
+#for f in scan_*.pnm; do
+#   log $f
+##   cp $f $SCANS_DIR/orig_$f
+#   mogrify -gravity West -chop 50x0 -gravity East -chop 55x0 -gravity North -chop 0x160 $f
+##   cp $f $SCANS_DIR/mog_$f
+#done
+#
+#logger "Checking for blank pages..."
+#for f in scan_*.pnm; do
+#    log "$f"
+#    histogram=`convert "$f" -threshold 50% -format %c histogram:info:-`
+#    white=`echo "${histogram}" | grep "#FFFFFF" | sed -n 's/^ *\(.*\):.*$/\1/p'`
+#    black=`echo "${histogram}" | grep "#000000" | sed -n 's/^ *\(.*\):.*$/\1/p'`
+#    blank=`echo "scale=4; ${black}/${white} < 0.005" | bc`
+#
+#    if [ ${blank} -eq "1" ]; then
+#        log "$f seems to be blank - removing it..."
+#        rm "$f"
+#    fi
+#done
+#
+#log "Unpaper..."
+#for f in scan_*.pnm; do
+#   log $f
+#   unpaper –size a4 –overwrite "$f" "$f"
+##   cp $f $SCANS_DIR/unpaper_$f
+#done
+#
+#log "Cleaning pages + tif..."
+#for f in scan_*.pnm; do
+#   log $f
+#   convert "$f" -contrast-stretch 1% -level 29%,76% "$f.tif"
+#done
+#
+#log "Doing OCR..."
+#for f in scan_*.pnm.tif; do
+#  log $f
+##  cp $f $SCANS_DIR/
+#  tesseract "$f" "$f" -l $LANGUAGE hocr
+#  hocr2pdf -i "$f" -s -o "$f.pdf" < "$f.hocr"
+##  cp $f.pdf $SCANS_DIR/
+#done
+#
+#log "Converting PDF..."
+#pdftk *.tif.pdf cat output "$FILE_NAME.pdf"
+#cp $FILE_NAME.pdf $SCANS_DIR/
+#rm -rf $TMP_DIR

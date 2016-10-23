@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+#recover from failed scan
+LOCKFILE="/tmp/copy.lock"
+rm -f $LOCKFILE
